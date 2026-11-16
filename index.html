@@ -1062,6 +1062,17 @@ function reviewNav(i){
   const back=k>=N?(GS.finishedAt?"Back to your score":"Back to finishing"):recap?"Back to where you left off":"Back to step "+(k+1);
   return '<div class="actions">'+nav+'<div class="grp"><button class="btn primary" data-act="rvBack">'+back+' →</button></div></div>';
 }
+// How a submitted value reads in the review, following the page's own field types.
+function rvMoney(f){return !f.kind&&!f.pct&&!f.dec&&f.box!=="N"&&(!f.unit||f.unit==="$");}
+function rvVal(f,v){
+  if(v==null||v==="")return "(blank)";
+  const t=String(v).trim();
+  if(f.kind&&f.opts){const o=f.opts.find(o=>String(o[0])===t);return o?String(o[1]):t;}
+  if(f.pct||f.unit==="%")return t.replace(/%$/,"")+"%";
+  if(f.unit&&f.unit!=="$")return t+" "+f.unit;
+  if(!rvMoney(f)||/^[-−(]/.test(t))return t;
+  return "$"+t.replace(/^\$\s*/,"");
+}
 function rvMark(r){if(!r)return '';const ok=r.ok===true||r.cls==="ok";return '<div class="fmsg '+(ok?"ok":"no")+'"><span>'+(ok?"✓":"✗")+'</span><span>'+esc(r.msg||"")+'</span></div>';}
 function renderReview(i){
   const s=STEPS[i], a=GS.ans[i], fb=GS.fb[i], p=GS.pts[i]||0, mx=maxPts(i);
@@ -1082,13 +1093,10 @@ function renderReview(i){
     h+=s.pre||"";
     const vals=a&&a.vals||{};
     h+='<div class="fields">';
-    s.fields.forEach(f=>{const r=fb&&fb.res?fb.res[f.id]:null, v=vals[f.id], blank=v==null||v==="";
-      let shown=blank?"(blank)":String(v);
-      if(f.kind&&f.opts){const o=f.opts.find(o=>o[0]===v);if(o)shown=o[1];}
-      else if(!blank)shown=f.unit?shown+" "+f.unit:"$"+shown;
+    s.fields.forEach(f=>{const r=fb&&fb.res?fb.res[f.id]:null, shown=rvVal(f,vals[f.id]);
       const sub=f.kind==="cls"&&f.amt!=null?'<small class="num">'+d$(f.amt)+'</small>':f.sub?'<small>'+esc(f.sub)+'</small>':'';
       h+='<div class="field'+(r?(r.ok?" ok":" no"):"")+'"><div class="frow"><div class="flabel">'+esc(f.label)+sub+'</div><div class="rv-ans">'+esc(shown)+'</div></div>'+rvMark(r);
-      if(f.ans!=null&&!(r&&r.ok)){const c=f.kind&&f.opts?((f.opts.find(o=>o[0]===f.ans)||[0,f.ans])[1]):f.unit?f.ans+" "+f.unit:d$(f.ans);h+='<div class="work">Correct answer: '+esc(c)+'</div>';}
+      if(f.ans!=null&&!(r&&r.ok)){const c=typeof f.ans==="number"&&rvMoney(f)?d$(f.ans):rvVal(f,f.ans);h+='<div class="work">Correct answer: '+esc(c)+'</div>';}
       if(f.work!=null)h+='<div class="work">'+esc(f.work)+'</div>';
       h+='</div>';});
     h+='</div>';
